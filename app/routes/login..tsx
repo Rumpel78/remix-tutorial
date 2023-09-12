@@ -1,14 +1,28 @@
-import { type ActionArgs, type LinksFunction } from "@remix-run/node";
+import type {
+  ActionArgs,
+  LinksFunction,
+  V2_MetaFunction,
+} from "@remix-run/node";
 import { Link, useActionData, useSearchParams } from "@remix-run/react";
 
 import stylesUrl from "~/styles/login.css";
-import { badRequest } from "../utils/request.server";
-import { db } from "../utils/db.server";
-import { createUserSession, login, register } from "../utils/session.server";
+import { db } from "~/utils/db.server";
+import { badRequest } from "~/utils/request.server";
+import { createUserSession, login, register } from "~/utils/session.server";
 
 export const links: LinksFunction = () => [
   { rel: "stylesheet", href: stylesUrl },
 ];
+
+export const meta: V2_MetaFunction = () => {
+  const description = "Login to submit your own jokes to Remix Jokes!";
+
+  return [
+    { name: "description", content: description },
+    { name: "twitter:description", content: description },
+    { title: "Remix Jokes | Login" },
+  ];
+};
 
 function validateUsername(username: string) {
   if (username.length < 3) {
@@ -33,16 +47,15 @@ function validateUrl(url: string) {
 export const action = async ({ request }: ActionArgs) => {
   const form = await request.formData();
   const loginType = form.get("loginType");
-  const username = form.get("username");
   const password = form.get("password");
+  const username = form.get("username");
   const redirectTo = validateUrl(
     (form.get("redirectTo") as string) || "/jokes"
   );
-
   if (
     typeof loginType !== "string" ||
-    typeof username !== "string" ||
-    typeof password !== "string"
+    typeof password !== "string" ||
+    typeof username !== "string"
   ) {
     return badRequest({
       fieldErrors: null,
@@ -51,12 +64,11 @@ export const action = async ({ request }: ActionArgs) => {
     });
   }
 
-  const fieldErrors = {
-    username: validateUsername(username),
-    password: validatePassword(password),
-  };
-
   const fields = { loginType, password, username };
+  const fieldErrors = {
+    password: validatePassword(password),
+    username: validateUsername(username),
+  };
   if (Object.values(fieldErrors).some(Boolean)) {
     return badRequest({
       fieldErrors,
@@ -89,7 +101,7 @@ export const action = async ({ request }: ActionArgs) => {
           formError: `User with username ${username} already exists`,
         });
       }
-      var user = await register({ username, password });
+      const user = await register({ username, password });
       if (!user) {
         return badRequest({
           fieldErrors: null,
@@ -110,9 +122,8 @@ export const action = async ({ request }: ActionArgs) => {
 };
 
 export default function Login() {
-  const [searchParams] = useSearchParams();
   const actionData = useActionData<typeof action>();
-
+  const [searchParams] = useSearchParams();
   return (
     <div className="container">
       <div className="content" data-light="">
@@ -159,7 +170,7 @@ export default function Login() {
                 actionData?.fieldErrors?.username ? "username-error" : undefined
               }
             />
-            {actionData?.fieldErrors?.username && (
+            {actionData?.fieldErrors?.username ? (
               <p
                 className="form-validation-error"
                 role="alert"
@@ -167,7 +178,7 @@ export default function Login() {
               >
                 {actionData.fieldErrors.username}
               </p>
-            )}
+            ) : null}
           </div>
           <div>
             <label htmlFor="password-input">Password</label>
@@ -181,7 +192,7 @@ export default function Login() {
                 actionData?.fieldErrors?.password ? "password-error" : undefined
               }
             />
-            {actionData?.fieldErrors?.password && (
+            {actionData?.fieldErrors?.password ? (
               <p
                 className="form-validation-error"
                 role="alert"
@@ -189,14 +200,14 @@ export default function Login() {
               >
                 {actionData.fieldErrors.password}
               </p>
-            )}
+            ) : null}
           </div>
           <div id="form-error-message">
-            {actionData?.formError && (
+            {actionData?.formError ? (
               <p className="form-validation-error" role="alert">
                 {actionData.formError}
               </p>
-            )}
+            ) : null}
           </div>
           <button type="submit" className="button">
             Submit
